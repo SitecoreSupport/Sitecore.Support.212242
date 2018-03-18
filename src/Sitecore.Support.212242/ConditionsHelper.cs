@@ -22,6 +22,11 @@ namespace Sitecore.Support.ExperienceExplorer.Business.Helpers
   /// </summary>
   public class ConditionsHelper
   {
+
+    private string webDatabaseName = Sitecore.Configuration.Settings.GetSetting("ExperienceExplorer.WebDatabase", "web");
+
+    public ConditionsHelper() : base() { }    
+
     public void GetConditionsRecursively(List<Condition> output, XElement parent, bool indent = false, string addtionalOperator = "")
     {
       Assert.ArgumentNotNull(parent, "parent");
@@ -88,7 +93,7 @@ namespace Sitecore.Support.ExperienceExplorer.Business.Helpers
           Item item = default(Item);
           using (new SecurityDisabler())
           {
-            item = Database.GetDatabase("web").GetItem(attributeValue);
+            item = Database.GetDatabase(webDatabaseName).GetItem(attributeValue);
           }
           if (item == null)
           {
@@ -179,7 +184,7 @@ namespace Sitecore.Support.ExperienceExplorer.Business.Helpers
         }
         else if (ID.IsID(text3))
         {
-          Item item = Database.GetDatabase("web").GetItem(text3);
+          Item item = Database.GetDatabase(webDatabaseName).GetItem(text3);
           if (item != null)
           {
             text3 = item.DisplayName;
@@ -202,7 +207,7 @@ namespace Sitecore.Support.ExperienceExplorer.Business.Helpers
               flag = true;
               break;
             }
-            Item item2 = Database.GetDatabase("web").GetItem(text4);
+            Item item2 = Database.GetDatabase(webDatabaseName).GetItem(text4);
             if (item2 != null)
             {
               if (num > 0)

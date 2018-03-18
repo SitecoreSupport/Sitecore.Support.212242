@@ -22,6 +22,7 @@
   using Sitecore.Web.UI;
   public class RuleStrategy : Sitecore.ExperienceExplorer.Business.Strategies.Rules.RuleStrategy
   {
+    private string webDatabaseName = Sitecore.Configuration.Settings.GetSetting("ExperienceExplorer.WebDatabase", "web");
     public RuleStrategy(Item item) : base(item) { }
     public RuleStrategy(PresetDefinition presetDefinition) : base(presetDefinition) { }
     public override RenderingDto GetRenderingDto(RenderingReference renderingReference)
@@ -91,14 +92,14 @@
         if (xElement2 != null)
         {
           XElement parent = xElement2.Elements().FirstOrDefault();
-          ConditionsHelper conditionsHelper = new ConditionsHelper();
+          var conditionsHelper = new Sitecore.Support.ExperienceExplorer.Business.Helpers.ConditionsHelper();
           List<Condition> list2 = new List<Condition>();
           conditionsHelper.GetConditionsRecursively(list2, parent, false, "");
           ruleDto.Conditions = new List<ConditionDto>();
           foreach (Condition item3 in list2)
           {
             string rulesXml = "<rules><rule><conditions>" + item3.Node + "</conditions></rule></rules>";
-            RuleList<RuleContext> ruleList = RuleFactory.ParseRules<RuleContext>(Database.GetDatabase("web"), rulesXml);
+            RuleList<RuleContext> ruleList = RuleFactory.ParseRules<RuleContext>(Database.GetDatabase(webDatabaseName), rulesXml);
             item3.IsTrue = ruleList.Rules.FirstOrDefault().Evaluate(ruleContext);
             ruleDto.Conditions.Add(new ConditionDto
             {
@@ -113,7 +114,7 @@
           ruleDto.Name = text;
         }
         string rulesXml2 = "<rules>" + item2.ToString() + "</rules>";
-        RuleList<RuleContext> ruleList2 = RuleFactory.ParseRules<RuleContext>(Database.GetDatabase("web"), rulesXml2);
+        RuleList<RuleContext> ruleList2 = RuleFactory.ParseRules<RuleContext>(Database.GetDatabase(webDatabaseName), rulesXml2);
         Rule<RuleContext> rule = ruleList2.Rules.FirstOrDefault();
         if (rule != null)
         {
@@ -123,5 +124,71 @@
       }
       return list;
     }
+    public override RuleDto GetRuleDto(RenderingReference renderingReference, Rule<ConditionalRenderingsRuleContext> rule)
+    {
+      RuleDto ruleDto = new RuleDto();
+      ruleDto.UniqueId = rule.UniqueId.ToString();
+      Field field = this.CurrentItem.Fields[FieldIDs.FinalLayoutField];
+      string fieldValue = LayoutField.GetFieldValue(field);
+      XDocument xDocument = XDocument.Parse(fieldValue);
+      XElement xElement = (from d in xDocument.Descendants("d")
+                           where d.Attribute("id").Value == this.DeviceItem.ID.ToString()
+                           select d).FirstOrDefault();
+      ConditionalRenderingsRuleContext conditionalRenderingsRuleContext = new ConditionalRenderingsRuleContext(this.RenderingReferences, renderingReference);
+      conditionalRenderingsRuleContext.Item = this.CurrentItem;
+      ConditionalRenderingsRuleContext ruleContext = conditionalRenderingsRuleContext;
+      if (xElement != null)
+      {
+        string text = (from r in xElement.Descendants("rule")
+                       where r.Attribute("uid").Value == rule.UniqueId.ToString()
+                       select r.Attribute("name").Value).FirstOrDefault();
+        XElement xElement2 = (from r in xElement.Descendants("rule")
+                              where r.Attribute("uid").Value == rule.UniqueId.ToString()
+                              select r).FirstOrDefault();
+        XElement xElement3 = xElement2.Descendants("conditions").FirstOrDefault();
+        List<Condition> list = new List<Condition>();
+        if (xElement3 != null)
+        {
+          XElement xElement4 = xElement3.Elements().FirstOrDefault();
+          if (xElement4 != null)
+          {
+            var conditionsHelper = new Sitecore.Support.ExperienceExplorer.Business.Helpers.ConditionsHelper();
+            conditionsHelper.GetConditionsRecursively(list, xElement4, false, "");
+          }
+        }
+        ruleDto.Conditions = new List<ConditionDto>();
+        if (list.Count == 0)
+        {
+          ruleDto.Conditions.Add(new ConditionDto
+          {
+            Text = Translate.Text("This rule has no conditions."),
+            IsTrue = false,
+            Indent = false
+          });
+        }
+        else
+        {
+          foreach (Condition item in list)
+          {
+            string rulesXml = "<rules><rule><conditions>" + item.Node + "</conditions></rule></rules>";
+            RuleList<RuleContext> ruleList = RuleFactory.ParseRules<RuleContext>(Database.GetDatabase(webDatabaseName), rulesXml);
+            item.IsTrue = ruleList.Rules.FirstOrDefault().Evaluate(ruleContext);
+            ruleDto.Conditions.Add(new ConditionDto
+            {
+              Text = item.Text,
+              IsTrue = item.IsTrue,
+              Indent = item.Indent
+            });
+          }
+        }
+        if (text != null)
+        {
+          ruleDto.Name = text;
+        }
+      }
+      ruleDto.Selected = rule.Evaluate(ruleContext);
+      return ruleDto;
+    }
+
   }
 }

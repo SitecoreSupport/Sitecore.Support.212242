@@ -34,7 +34,7 @@
         return;
       }
 
-      var renderings = AbstractFactory.Create<RenderingsDtos, RuleStrategy>(new RuleStrategy(item));
+      var renderings = AbstractFactory.Create<RenderingsDtos, RuleStrategy>(new Sitecore.Support.ExperienceExplorer.Business.Strategies.Rules.RuleStrategy(item));
       model.Renderings = renderings;
       ModuleManager.Model = model;
     }
